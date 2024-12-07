@@ -166,6 +166,7 @@ func findFirstAvailableSpot(parkingSpots: [[[Bool]]]) -> (floor: Int, row: Int, 
     return nil
 }
 
-#Preview {
-    ChooseSpot(spotSelection: ParkingBuildingSelection.building(buildings[2]))
-}
+//#Preview {
+//    ChooseSpot(spotSelection: ParkingBuildingSelection.building(buildings[2]))
+//}
+

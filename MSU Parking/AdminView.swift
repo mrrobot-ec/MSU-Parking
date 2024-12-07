@@ -6,11 +6,13 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct AdminView: View {
     @EnvironmentObject var dataManager: DataManager  // Access the DataManager instance
     private let primaryColor = Color(red: 209/255, green: 25/255, blue: 13/255)  // #D1190D
     @State private var navigateToLogin: Bool = false
+    @Environment(\.modelContext) private var context
     var body: some View {
         VStack {
             HStack {
@@ -29,7 +31,7 @@ struct AdminView: View {
                     NavigationLink(destination: LoginView(), isActive: $navigateToLogin) {
                         EmptyView()
                     }
-                    .hidden()
+                        .hidden()
                 )
                 Spacer()
                 
@@ -60,9 +62,9 @@ struct AdminView: View {
                     }
                 
                 UsersTabView()
-                        .tabItem {
-                            Label("Users", systemImage: "person.crop.circle.badge.plus").foregroundColor(primaryColor)
-                        }
+                    .tabItem {
+                        Label("Users", systemImage: "person.crop.circle.badge.plus").foregroundColor(primaryColor)
+                    }
             }
         }
         .navigationTitle("Admin Panel")
@@ -71,21 +73,21 @@ struct AdminView: View {
 
 
 struct UsersTabView: View {
-    @ObservedObject var dataManager = DataManager.shared
+    @Query var users: [UserEntity]
     @State private var showAddUserSheet = false
-
+    @EnvironmentObject var dataManager: DataManager
+    
     var body: some View {
         NavigationView {
             List {
                 // Section: Show All Users
                 Section(header: Text("All Users")) {
-                    ForEach(dataManager.users) { user in
+                    ForEach(users) { user in
                         VStack(alignment: .leading) {
-                            isLoggedInUser(user) ? Color.green.opacity(0.2) : Color.clear
                             HStack {
-                                Text("\(user.firstName) \(user.lastName)")
+                                Text("\(user.firstName ?? "Unknown") \(user.lastName ?? "User")")
                                     .font(.headline)
-                                    .foregroundColor(isLoggedInUser(user) ? .green : .primary) // Highlight logged-in user
+                                    .foregroundColor(isLoggedInUser(user) ? .green : .primary)
                                 
                                 if isLoggedInUser(user) {
                                     Text("(You)")
@@ -94,14 +96,14 @@ struct UsersTabView: View {
                                         .bold()
                                 }
                             }
-                            Text("Role: \(user.role.capitalized)")
+                            Text("Role: \(user.role.capitalized ?? "N/A")")
                                 .font(.subheadline)
-                            Text("Username: \(user.username)")
+                            Text("Username: \(user.username ?? "Unknown")")
                                 .font(.footnote)
                                 .foregroundColor(.gray)
                         }
                         .padding(.vertical, 5)
-                        .background(isLoggedInUser(user) ? Color.green.opacity(0.2) : Color.clear) // Highlight background
+                        .background(isLoggedInUser(user) ? Color.green.opacity(0.2) : Color.clear)
                         .cornerRadius(8)
                     }
                 }
@@ -119,22 +121,23 @@ struct UsersTabView: View {
                 }
             }
             .listStyle(InsetGroupedListStyle())
+            .navigationTitle("Users")
             .sheet(isPresented: $showAddUserSheet) {
                 UserFormView()
             }
         }
     }
-
+    
     // Helper to check if the given user is the logged-in user
-    private func isLoggedInUser(_ user: User) -> Bool {
+    private func isLoggedInUser(_ user: UserEntity) -> Bool {
         return dataManager.currentUser?.id == user.id
     }
 }
 
 struct UserFormView: View {
-    @ObservedObject var dataManager = DataManager.shared
+    @EnvironmentObject var dataManager: DataManager
     @Environment(\.dismiss) var dismiss
-
+    
     @State private var firstName: String = ""
     @State private var lastName: String = ""
     @State private var username: String = ""
@@ -142,9 +145,9 @@ struct UserFormView: View {
     @State private var role: String = "user"
     @State private var showAlert = false
     @State private var alertMessage = ""
-
+    
     let roles = ["admin", "user"]
-
+    
     var body: some View {
         NavigationView {
             Form {
@@ -154,7 +157,7 @@ struct UserFormView: View {
                     TextField("Username", text: $username)
                     SecureField("Password", text: $password)
                 }
-
+                
                 Section(header: Text("Role")) {
                     Picker("Role", selection: $role) {
                         ForEach(roles, id: \.self) { role in
@@ -182,14 +185,14 @@ struct UserFormView: View {
             }
         }
     }
-
+    
     private func saveUser() {
         if firstName.isEmpty || lastName.isEmpty || username.isEmpty || password.isEmpty {
             alertMessage = "All fields are required."
             showAlert = true
             return
         }
-
+        
         let success = dataManager.registerUser(firstName: firstName, lastName: lastName, username: username, password: password, role: role)
         if success {
             dismiss()
@@ -202,7 +205,7 @@ struct UserFormView: View {
 
 struct CreateUserView: View {
     @EnvironmentObject var dataManager: DataManager
-
+    
     @State private var firstName: String = ""
     @State private var lastName: String = ""
     @State private var username: String = ""
@@ -211,14 +214,14 @@ struct CreateUserView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var alertTitle = ""
-
+    
     enum UserRole: String, CaseIterable, Identifiable {
         case admin = "Admin"
         case user = "User"
         
         var id: String { self.rawValue }
     }
-
+    
     var body: some View {
         Form {
             // User Information Section
@@ -235,7 +238,7 @@ struct CreateUserView: View {
                 TextField("Last Name", text: $lastName)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .padding(.vertical, 5)
-
+                
                 TextField("Username", text: $username)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .padding(.vertical, 5)
@@ -252,7 +255,7 @@ struct CreateUserView: View {
                 .pickerStyle(SegmentedPickerStyle())
                 .padding(.vertical, 5)
             }
-
+            
             // Save Button
             Button(action: createUser) {
                 Text("Create User")
@@ -273,12 +276,12 @@ struct CreateUserView: View {
                   dismissButton: .default(Text("OK")))
         }
     }
-
+    
     private func isFormValid() -> Bool {
         return !firstName.isEmpty &&
-               !lastName.isEmpty &&
-               !username.isEmpty &&
-               !password.isEmpty
+        !lastName.isEmpty &&
+        !username.isEmpty &&
+        !password.isEmpty
     }
     
     private func createUser() {
@@ -289,7 +292,7 @@ struct CreateUserView: View {
             password: password,
             role: selectedRole.rawValue.lowercased()
         )
-
+        
         if success {
             alertTitle = "Success"
             alertMessage = "User \(username) has been created successfully."
@@ -300,7 +303,7 @@ struct CreateUserView: View {
         showAlert = true
         clearForm()
     }
-
+    
     private func clearForm() {
         firstName = ""
         lastName = ""
@@ -312,7 +315,7 @@ struct CreateUserView: View {
 
 struct AddDataView: View {
     @EnvironmentObject var dataManager: DataManager
-
+    @Environment(\.modelContext) private var context
     @State private var name: String = ""
     @State private var latitude: String = ""
     @State private var longitude: String = ""
@@ -326,14 +329,14 @@ struct AddDataView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var alertTitle = ""
-
+    
     enum ParkingAreaType: String, CaseIterable, Identifiable {
         case lot = "Lot"
         case building = "Building"
         
         var id: String { self.rawValue }
     }
-
+    
     var body: some View {
         Form {
             // General Information Section
@@ -355,7 +358,7 @@ struct AddDataView: View {
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                 }
                 .padding(.vertical, 5)
-
+                
                 HStack {
                     Image(systemName: "location.fill")
                         .foregroundColor(.green)
@@ -365,7 +368,7 @@ struct AddDataView: View {
                 }
                 .padding(.vertical, 5)
             }
-
+            
             // Specifications Section
             Section(header: HStack {
                 Image(systemName: "gearshape.fill")
@@ -406,7 +409,7 @@ struct AddDataView: View {
                 .pickerStyle(SegmentedPickerStyle()) // Makes it a segmented control
                 .padding(.vertical, 5)
             }
-
+            
             // Save Button
             Button(action: addParkingArea) {
                 Text("Save")
@@ -427,17 +430,17 @@ struct AddDataView: View {
                   dismissButton: .default(Text("OK")))
         }
     }
-
+    
     private func isFormValid() -> Bool {
         return !name.isEmpty &&
-            Double(latitude) != nil &&
-            Double(longitude) != nil &&
-            Int(floors) != nil &&
-            Int(maxCapacity) != nil
+        Double(latitude) != nil &&
+        Double(longitude) != nil &&
+        Int(floors) != nil &&
+        Int(maxCapacity) != nil
     }
     
     private func addParkingArea() {
-
+        
         guard let latitude = Double(latitude),
               let longitude = Double(longitude),
               let floors = Int(floors),
@@ -446,39 +449,91 @@ struct AddDataView: View {
               let maxCapacity = Int(maxCapacity) else {
             return
         }
-
+        
         // Add based on the selected type (Lot or Building)
-        let nearestEntranceId = dataManager.entrances.first?.id ?? ""
+        let nearestEntrance = dataManager.entrances.first ?? nil
         if selectedType == .lot {
-            var isLotAdded = dataManager.addLot(name: name, coordinates: [latitude, longitude], floors: floors, rows: rows, cols: cols, maxCapacity: maxCapacity, nearestEntranceId: nearestEntranceId)
-            
-            if(isLotAdded){
-                alertMessage = "Parking Lot '\(name)' has been added successfully."
-                alertTitle = "Success"
-            }else{
-                alertMessage = "Parking Lot '\(name)' already Exists."
-                alertTitle = "Failed"
-            }
+            do {
+                  // Check if a lot with the same name already exists
+                  let fetchRequest = FetchDescriptor<LotEntity>(
+                      predicate: #Predicate { $0.name == name }
+                  )
+                  let existingLots = try context.fetch(fetchRequest)
+                  
+                  if !existingLots.isEmpty {
+                      alertMessage = "Parking Lot '\(name)' already exists."
+                      alertTitle = "Failed"
+                  } else {
+                      guard let nearestEntrance = nearestEntrance else {
+                          alertMessage = "Nearest entrance is required."
+                          alertTitle = "Failed"
+                          return
+                      }
+                      
+                      // Create a new LotEntity
+                      let newLot = LotEntity(
+                          name: name,
+                          coordinates: [latitude, longitude],
+                          floors: floors,
+                          rows: rows,
+                          cols: cols,
+                          nearestEntrance: nearestEntrance
+                      )
+                      context.insert(newLot)
+                      
+                      alertMessage = "Parking Lot '\(name)' added successfully."
+                      alertTitle = "Success"
+                  }
+              } catch {
+                  alertMessage = "An error occurred while adding the parking lot."
+                  alertTitle = "Error"
+              }
             
         } else {
-            var isBuildingAdded = dataManager.addBuilding(name: name, coordinates: [latitude, longitude], floors: floors, rows: rows, cols: cols, maxCapacity: maxCapacity, nearestEntranceId: nearestEntranceId)
-            
-            if(isBuildingAdded){
-                alertMessage = "Building '\(name)' has been added successfully."
-                alertTitle = "Success"
-            }else{
-                alertMessage = "Building' \(name)' already Exists."
-                alertTitle = "Failed"
-            }
+            do {
+                  // Check if a lot with the same name already exists
+                  let fetchRequest = FetchDescriptor<BuildingEntity>(
+                      predicate: #Predicate { $0.name == name }
+                  )
+                  let existingBuilding = try context.fetch(fetchRequest)
+                  
+                  if !existingBuilding.isEmpty {
+                      alertMessage = "Building '\(name)' already exists."
+                      alertTitle = "Failed"
+                  } else {
+                      guard let nearestEntrance = nearestEntrance else {
+                          alertMessage = "Nearest entrance is required."
+                          alertTitle = "Failed"
+                          return
+                      }
+                      
+                      // Create a new LotEntity
+                      let newBuilding = BuildingEntity(
+                          name: name,
+                          coordinates: [latitude, longitude],
+                          floors: floors,
+                          rows: rows,
+                          cols: cols,
+                          nearestEntrance: nearestEntrance
+                      )
+                      context.insert(newBuilding)
+                      
+                      alertMessage = "Building '\(name)' added successfully."
+                      alertTitle = "Success"
+                  }
+              } catch {
+                  alertMessage = "An error occurred while adding the building."
+                  alertTitle = "Error"
+              }
             
         }
-
+        
         // Show the success alert
         showAlert = true
-
+        
         clearForm()
     }
-
+    
     private func clearForm() {
         name = ""
         latitude = ""
@@ -491,21 +546,21 @@ struct AddDataView: View {
 
 struct ViewDataView: View {
     @EnvironmentObject var dataManager: DataManager
-    @State private var selectedLot: Lot?
-    @State private var selectedBuilding: Building?
+    @State private var selectedLot: LotEntity?
+    @State private var selectedBuilding: BuildingEntity?
     @State private var isEditing = false
-
+    
     var body: some View {
         List {
             // "Lots" Section with Icon and Larger Header
             Section(header:
-                HStack {
-                    Image(systemName: "car.2.fill")
-                        .foregroundColor(.blue)
-                    Text("Lots")
-                        .font(.title2)
-                        .bold()
-                }
+                        HStack {
+                Image(systemName: "car.2.fill")
+                    .foregroundColor(.blue)
+                Text("Lots")
+                    .font(.title2)
+                    .bold()
+            }
                 .padding(.vertical, 4)
             ) {
                 ForEach(dataManager.lots) { lot in
@@ -519,7 +574,7 @@ struct ViewDataView: View {
                                 isEditing = true
                             }
                         }
-
+                        
                         // Differentiated ID styling
                         HStack {
                             Image(systemName: "tag")
@@ -552,16 +607,16 @@ struct ViewDataView: View {
                     .padding(.vertical, 4)
                 }
             }
-
+            
             // "Buildings" Section with Icon and Larger Header
             Section(header:
-                HStack {
-                    Image(systemName: "building.2.crop.circle.fill")
-                        .foregroundColor(.orange)
-                    Text("Buildings")
-                        .font(.title2)
-                        .bold()
-                }
+                        HStack {
+                Image(systemName: "building.2.crop.circle.fill")
+                    .foregroundColor(.orange)
+                Text("Buildings")
+                    .font(.title2)
+                    .bold()
+            }
                 .padding(.vertical, 4)
             ) {
                 ForEach(dataManager.buildings) { building in
@@ -575,7 +630,7 @@ struct ViewDataView: View {
                                 isEditing = true
                             }
                         }
-
+                        
                         // Differentiated ID styling
                         HStack {
                             Image(systemName: "tag")
@@ -629,7 +684,8 @@ struct ViewDataView: View {
 struct EditDataView: View {
     @EnvironmentObject var dataManager: DataManager
     @Binding var isPresenting: Bool
-    
+    @Environment(\.modelContext) private var context
+
     @State private var name: String = ""
     @State private var latitude: String = ""
     @State private var longitude: String = ""
@@ -637,19 +693,20 @@ struct EditDataView: View {
     @State private var maxCapacity: String = ""
     
     @State private var showDeleteAlert = false
-    
-    var lot: Lot?
-    var building: Building?
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+    @State private var alertTitle = ""
+    var lot: LotEntity?
+    var building: BuildingEntity?
     
     var body: some View {
         NavigationView {
             VStack {
                 Form {
-                    // Edit Information Section
                     Section(header: Text("Edit Information")
-                                .font(.headline)
-                                .foregroundColor(.blue)
-                                .padding(.top, 10)
+                        .font(.headline)
+                        .foregroundColor(.blue)
+                        .padding(.top, 10)
                     ) {
                         Group {
                             CustomTextField(title: "Name", text: $name, systemImage: "textformat")
@@ -659,8 +716,6 @@ struct EditDataView: View {
                             CustomTextField(title: "Max Capacity", text: $maxCapacity, systemImage: "person.3.fill", keyboardType: .numberPad)
                         }
                     }
-
-                    // Save Button
                     Section {
                         Button(action: saveChanges) {
                             Text("Save Changes")
@@ -676,8 +731,6 @@ struct EditDataView: View {
                         .padding(.horizontal)
                         .disabled(!isFormValid())
                     }
-                    
-                    // Delete Button
                     Section {
                         Button(action: { showDeleteAlert = true }) {
                             Text("Delete \(lot != nil ? "Lot" : "Building")")
@@ -700,6 +753,7 @@ struct EditDataView: View {
                                 secondaryButton: .cancel()
                             )
                         }
+                        
                     }
                 }
                 .navigationBarTitle("Edit Data", displayMode: .inline)
@@ -707,10 +761,14 @@ struct EditDataView: View {
                     isPresenting = false
                 })
                 .onAppear(perform: loadData)
+                .alert(isPresented: $showAlert) {
+                    Alert(title: Text(alertTitle),
+                          message: Text(alertMessage),
+                          dismissButton: .default(Text("OK")))}
             }
         }
     }
-
+    
     // Custom TextField with Icon
     private func CustomTextField(title: String, text: Binding<String>, systemImage: String, keyboardType: UIKeyboardType = .default) -> some View {
         HStack {
@@ -726,16 +784,16 @@ struct EditDataView: View {
                 .padding(.vertical, 5)
         }
     }
-
+    
     // Form validation
     private func isFormValid() -> Bool {
         return !name.isEmpty &&
-            Double(latitude) != nil &&
-            Double(longitude) != nil &&
-            Int(floors) != nil &&
-            Int(maxCapacity) != nil
+        Double(latitude) != nil &&
+        Double(longitude) != nil &&
+        Int(floors) != nil &&
+        Int(maxCapacity) != nil
     }
-
+    
     // Load data into the form
     private func loadData() {
         if let lot = lot {
@@ -752,36 +810,140 @@ struct EditDataView: View {
             maxCapacity = "\(building.maxCapacity)"
         }
     }
-
+    
     // Save the changes
     private func saveChanges() {
         guard let latitude = Double(latitude),
               let longitude = Double(longitude),
               let floors = Int(floors),
               let maxCapacity = Int(maxCapacity) else { return }
-        
         if let lot = lot {
-            dataManager.updateLot(lot, name: name, coordinates: [latitude, longitude], floors: floors, maxCapacity: maxCapacity)
+            let fetchRequest = FetchDescriptor<LotEntity>(
+                predicate: #Predicate { $0.name == name}
+            )
+            
+            
+                do {
+                    if try context.fetch(fetchRequest).count > 0 {
+                        alertMessage = "Name already exists."
+                        alertTitle = "Error"
+                    }
+                                        
+                    guard !name.isEmpty else {
+                        alertMessage = "Validate: Name must not be empty."
+                        alertTitle = "Error"
+                        return
+                    }
+                                        
+                    guard latitude != 0, longitude != 0 else {
+                        alertMessage = "Validate: Coordinates should have exactly two non-zero values."
+                        alertTitle = "Error"
+                        return
+                    }
+                     
+                    guard floors > 0 else {
+                        alertMessage = "Validate: Floors must be greater than 0."
+                        alertTitle = "Error"
+                        return
+                    }
+                                        
+                    guard maxCapacity > 0 else {
+                        alertMessage = "Validate: Max Capacity must be greater than 0."
+                        alertTitle = "Error"
+                        return
+                    }
+                    
+                    // Update the fields
+                    lot.name = name
+                    lot.coordinates = [latitude, longitude]
+                    lot.floors = floors
+                    
+                    // Save changes to the context
+                    try context.save()
+                } catch {
+                    print("Failed to update lot: \(error)")
+                }
         } else if let building = building {
-            dataManager.updateBuilding(building, name: name, coordinates: [latitude, longitude], floors: floors, maxCapacity: maxCapacity)
+           
+            let fetchRequest = FetchDescriptor<BuildingEntity>(
+                predicate: #Predicate { $0.name == name }
+            )
+            
+            do {
+                if try context.fetch(fetchRequest).count > 0 {
+                    alertMessage = "Name already exists."
+                    alertTitle = "Error"
+                }
+                                    
+                guard !name.isEmpty else {
+                    alertMessage = "Validate: Name must not be empty."
+                    alertTitle = "Error"
+                    return
+                }
+                                    
+                guard latitude != 0, longitude != 0 else {
+                    alertMessage = "Validate: Coordinates should have exactly two non-zero values."
+                    alertTitle = "Error"
+                    return
+                }
+                 
+                guard floors > 0 else {
+                    alertMessage = "Validate: Floors must be greater than 0."
+                    alertTitle = "Error"
+                    return
+                }
+                                    
+                guard maxCapacity > 0 else {
+                    alertMessage = "Validate: Max Capacity must be greater than 0."
+                    alertTitle = "Error"
+                    return
+                }
+                
+                // Update the fields
+                building.name = name
+                building.coordinates = [latitude, longitude]
+                building.floors = floors
+                building.maxCapacity = maxCapacity
+                // Save changes to the context
+                try context.save()
+            } catch {
+                print("Failed to update building: \(error)")
+            }
+            
         }
         
         isPresenting = false
     }
-
+    
     // Delete the lot or building
     private func deleteItem() {
         if let lot = lot {
-            dataManager.deleteLot(lot)
+            do {
+            context.delete(lot)
+            try context.save()
+                    print("Lot '\(lot.name)' deleted successfully.")
+            } catch {
+                    print("Failed to delete lot: \(error)")
+                }
         } else if let building = building {
-            dataManager.deleteBuilding(building)
+            do {
+                   // Delete the building
+                   context.delete(building)
+                   // Save changes to persist the deletion
+                   try context.save()
+                   print("Building '\(building.name)' deleted successfully.")
+            } catch {
+                print("Failed to delete building: \(error)")
+            }
         }
         
         isPresenting = false
     }
 }
 
-#Preview {
-    AdminView()
-        .environmentObject(DataManager.shared)  // Inject DataManager
-}
+//#Preview {
+//    AdminView()
+//        .environmentObject(DataManager.shared)  // Inject DataManager
+//}
+
+

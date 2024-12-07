@@ -5,94 +5,139 @@
 //  Created by Zain Ul Abidin on 10/29/24.
 //
 
+
 import SwiftUI
+import SwiftData
 
-var destinations = DataManager.shared.entrances
-var lots = DataManager.shared.lots  // Access the shared data
-var buildings = DataManager.shared.buildings
+struct ChooseDestinationView: View {
+    @Query var regions: [RegionEntity]
+    @Query var entrances: [EntranceEntity]
+    @State private var selectedRegion: RegionEntity?
 
-struct ChooseDestination: View {
-    @State private var selectedRegion: Region = .NORTH  // Track the selected region
-    
-    var filteredDestinations: [Entrance] {
-        destinations.filter { $0.region == selectedRegion }
+    var filteredDestinations: [EntranceEntity] {
+        if let region = selectedRegion {
+            return entrances.filter { $0.region.id == region.id }
+        }
+        return []
     }
     
     var body: some View {
         NavigationView {
             VStack {
-                HStack {
-                    
-                    Text("Destination")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    Image(systemName: "arrow.right.circle.fill")
-                        .foregroundColor(.blue)
-                }
-                .padding()
+                HeaderView()
                 
-                // Picker for selecting the region
-                Picker("Select Region", selection: $selectedRegion) {
-                    ForEach(Region.allCases) { region in
-                        Text(region.rawValue).tag(region)
-                    }
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                .padding()
+                // Region picker
+                RegionPicker(selectedRegion: $selectedRegion, regions: regions)
                 
-                // ScrollView for the list to allow it to be scrollable
+                // Scrollable destination list
                 ScrollView {
                     if filteredDestinations.isEmpty {
-                        Text("No Building Found!")
-                            .foregroundColor(.gray)
-                            .padding()
+                        EmptyStateView(message: "No Building Found!")
                     } else {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
-                            ForEach(filteredDestinations, id: \.id) { destination in
-                                NavigationLink(
-                                    destination: ChooseLot(lots: filteredLots(for: destination), buildings: filteredBuildings(for: destination))
-                                ) {
-                                    VStack {
-                                        Image(systemName: "building.2.fill")
-                                            .foregroundColor(.blue)
-                                        
-                                        Text(destination.name)
-                                            .font(.headline)
-                                            .foregroundColor(.primary)
-                                            .fontWeight(.bold)
-                                    }
-                                    .frame(width: 100, height: 100)
-                                    .padding()
-                                    .background(Color(UIColor.systemGray6))
-                                    .cornerRadius(8)
-                                    .shadow(radius: 1)
-                                    
-                                    
-                                }
-                                .padding(.vertical, 4)
-                            }
-                        }
+                        DestinationGridView(destinations: filteredDestinations)
                     }
                 }
                 .padding(.top)
             }
         }
     }
-    
-    // Function to filter lots based on nearest destination
-    private func filteredLots(for destination: Entrance) -> [Lot] {
-        lots.filter { $0.nearestEntranceId == destination.id }
-    }
-    
-    // Function to filter buildings based on nearest destination
-    private func filteredBuildings(for destination: Entrance) -> [Building] {
-        buildings.filter { $0.nearestEntranceId == destination.id }
+}
+
+// MARK: - Subviews
+
+/// A reusable header for the destination view
+struct HeaderView: View {
+    var body: some View {
+        HStack {
+            Text("Destination")
+                .font(.headline)
+                .foregroundColor(.primary)
+            Image(systemName: "arrow.right.circle.fill")
+                .foregroundColor(.blue)
+        }
+        .padding()
     }
 }
 
+/// A picker for selecting the region
+struct RegionPicker: View {
+    @Binding var selectedRegion: RegionEntity?
+    let regions: [RegionEntity]
+    
+    var body: some View {
+        Picker("Select Region", selection: $selectedRegion) {
+            ForEach(regions) { region in
+                Text(region.name ?? "Unknown").tag(region as RegionEntity?)
+            }
+        }
+        .pickerStyle(SegmentedPickerStyle())
+        .padding()
+    }
+}
+
+/// A grid view displaying the filtered destinations
+struct DestinationGridView: View {
+    let destinations: [EntranceEntity]
+    
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
+            ForEach(destinations) { destination in
+                NavigationLink(
+                    destination: ChooseLotView(destination: destination)
+                ) {
+                    DestinationCard(destination: destination)
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+}
+
+/// A card representing a single destination
+struct DestinationCard: View {
+    let destination: EntranceEntity
+    
+    var body: some View {
+        VStack {
+            Image(systemName: "building.2.fill")
+                .foregroundColor(.blue)
+            Text(destination.name ?? "Unknown")
+                .font(.headline)
+                .foregroundColor(.primary)
+                .fontWeight(.bold)
+        }
+        .frame(width: 100, height: 100)
+        .padding()
+        .background(Color(UIColor.systemGray6))
+        .cornerRadius(8)
+        .shadow(radius: 1)
+    }
+}
+
+/// A reusable empty state view
+struct EmptyStateView: View {
+    let message: String
+    
+    var body: some View {
+        Text(message)
+            .foregroundColor(.gray)
+            .padding()
+    }
+}
+
+// MARK: - ChooseLotView Stub
+
+/// Stubbed ChooseLotView for demonstration purposes
+struct ChooseLotView: View {
+    let destination: EntranceEntity
+    
+    var body: some View {
+        Text("Choose a lot near \(destination.name ?? "Unknown")")
+    }
+}
+
+// MARK: - Preview
 
 #Preview {
-    ChooseDestination()
+    ChooseDestinationView()
 }
-
-

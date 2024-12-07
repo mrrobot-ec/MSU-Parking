@@ -9,8 +9,8 @@ import SwiftUI
 
 // enum to pass case and selected data to navigation view
 enum ParkingBuildingSelection {
-    case lot(Lot)
-    case building(Building)
+    case lot(LotEntity)
+    case building(BuildingEntity)
 }
 
 // enum to select picker
@@ -22,8 +22,8 @@ enum ParkingTypeSelection: String, CaseIterable, Identifiable {
 }
 
 struct ChooseLot: View {
-    var lots: [Lot]
-    var buildings: [Building]
+    var lots: [LotEntity]
+    var buildings: [BuildingEntity]
     @State private var selectedItem: ParkingTypeSelection = .LOT //keep state of picker
     
     var body: some View {
@@ -64,7 +64,7 @@ struct ChooseLot: View {
 
 // view to show all lots with available parking spots
 struct LotGridView: View {
-    var lots: [Lot]
+    var lots: [LotEntity]
     
     var body: some View {
         if lots.isEmpty {
@@ -86,7 +86,7 @@ struct LotGridView: View {
 
 // view to show all buildings with available parking spots
 struct BuildingGridView: View {
-    var buildings: [Building]
+    var buildings: [BuildingEntity]
     
     var body: some View {
         if buildings.isEmpty {
@@ -130,6 +130,6 @@ struct ParkingItemView: View {
     }
 }
 
-#Preview {
-    ChooseLot(lots: lots, buildings: buildings)
-}
+//#Preview {
+//    ChooseLot(lots: lots, buildings: buildings)
+//}

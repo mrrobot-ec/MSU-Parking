@@ -101,7 +101,7 @@ struct LoginView: View {
         // Use the isAdmin state to pass the correct role when authenticating
         let role = isAdmin ? "admin" : "user"
         
-        if let user = dataManager.authenticateUser(username: username, password: password) {
+        if let user = dataManager.authenticateUser(username: username, password: password){
             // After successful login, navigate based on role
             if user.role == role {
                 userRole = role
@@ -122,7 +122,7 @@ struct LoginView: View {
         if userRole == "admin" {
             return AnyView(AdminView())  // Navigate to AdminView for admin users
         } else if userRole == "user" {
-            return AnyView(ChooseDestination())  // Navigate to ChooseEntrance for regular users
+            return AnyView(ChooseDestinationView())  // Navigate to ChooseEntrance for regular users
         } else {
             return AnyView(Text("Unknown Role"))  // Default case, should not happen in this setup
         }

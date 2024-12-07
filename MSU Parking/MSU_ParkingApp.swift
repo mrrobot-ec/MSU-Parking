@@ -6,12 +6,18 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct MSU_ParkingApp: App {
+    @State private var container: ModelContainer = try! ModelContainer(for: RegionEntity.self, EntranceEntity.self, LotEntity.self, UserEntity.self, BuildingEntity.self)
+
     var body: some Scene {
         WindowGroup {
-            LoginView().environmentObject(DataManager.shared)
+            LoginView()
+                .environmentObject(DataManager(context: container.mainContext))
+                .modelContainer(container)
+//            LoginView().environmentObject(DataManager.shared)
         }
     }
 }
